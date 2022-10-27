@@ -1,7 +1,7 @@
 steps:
   # injecting variables into .env file
   - id: inject_vars
-    name: 'yarn'
+    name: 'gcr.io/cloud-builders/yarn'
     args: ['create-env']
     env:
       - 'POSTGRES_HOST=${_POSTGRES_HOST}'
@@ -14,7 +14,7 @@ steps:
 
   # Build the container image
   - id: build_image
-    name: 'docker'
+    name: 'gcr.io/cloud-builders/docker'
     args:
       [
         'build',
@@ -27,11 +27,11 @@ steps:
 
   # Push the container image to Container Registry
   - id: push_sha
-    name: 'docker'
+    name: 'gcr.io/cloud-builders/docker'
     args: ['push', $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$SHORT_SHA]
 
   - id: push_latest
-    name: 'docker'
+    name: 'gcr.io/cloud-builders/docker'
     args: ['push', $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:latest]
 
   # Deploy using the latest docker image
