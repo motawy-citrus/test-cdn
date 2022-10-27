@@ -1,0 +1,63 @@
+steps:
+  # injecting variables into .env file
+  - id: inject_vars
+    name: 'yarn'
+    args: ['create-env']
+    env:
+      - 'POSTGRES_HOST=${_POSTGRES_HOST}'
+      - 'POSTGRES_PORT=${_POSTGRES_PORT}'
+      - 'POSTGRES_USER=${_POSTGRES_USER}'
+      - 'POSTGRES_DATABASE=${_POSTGRES_DATABASE}'
+      - 'NO_COLOR=${_NO_COLOR}'
+    secretEnv:
+      - POSTGRES_PASSWORD
+
+  # Build the container image
+  - id: build_image
+    name: 'docker'
+    args:
+      [
+        'build',
+        '-t',
+        $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$SHORT_SHA,
+        '-t',
+        $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:latest,
+        '.',
+      ]
+
+  # Push the container image to Container Registry
+  - id: push_sha
+    name: 'docker'
+    args: ['push', $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$SHORT_SHA]
+
+  - id: push_latest
+    name: 'docker'
+    args: ['push', $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:latest]
+
+  # Deploy using the latest docker image
+  - id: deploy
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      [
+        'run',
+        'deploy',
+        $_SERVICE_NAME,
+        '--image',
+        $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:latest,
+        '--region',
+        $_DEPLOY_REGION,
+        '--platform',
+        $_PLATFORM,
+        '--port',
+        '4000',
+      ]
+
+images:
+  - $_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:latest
+
+availableSecrets:
+  secretManager:
+    - versionName: 'projects/$PROJECT_NUMBER/secrets/POSTGRES_PASSWORD/versions/1'
+      env: 'POSTGRES_PASSWORD'
+timeout: '1600s'
